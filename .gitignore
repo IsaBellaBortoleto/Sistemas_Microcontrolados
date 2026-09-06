@@ -1,0 +1,49 @@
+# ---- Keil uVision / MDK-ARM ----
+
+# Saidas de build
+Objects/
+Listings/
+DebugConfig/
+RTE/
+*.o
+*.axf
+*.hex
+*.bin
+*.elf
+*.map
+*.lnp
+*.dep
+*.crf
+*.d
+*.lst
+*.sct
+*.iex
+*.htm
+*.build_log.htm
+
+# Arquivos de usuario / interface (nao devem ser versionados)
+*.uvoptx
+*.uvguix.*
+*.uvgui.*
+*.scvd
+JLinkLog.txt
+*.bak
+*.sav
+*.__i
+*.i
+
+# O arquivo de projeto (*.uvprojx) DEVE ser versionado:
+!*.uvprojx
+
+# ---- Sistema operacional ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# ---- Editores ----
+.vscode/
+.idea/
+*.swp
+*~
