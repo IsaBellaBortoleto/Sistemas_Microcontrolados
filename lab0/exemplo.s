@@ -8,6 +8,10 @@
 ; -------------------------------------------------------------------------------
 ; Declarações EQU - Defines
 ;<NOME>         EQU <VALOR>
+
+VET_IN EQU 0x20000400 ;vetor de entrada
+VET_OUT EQU 0x20000600 ;vetor de saída (lista de palindromos) 
+	
 ; -------------------------------------------------------------------------------
 ; Área de Dados - Declarações de variáveis
 		AREA  DATA, ALIGN=2
@@ -33,17 +37,59 @@
 
 ; -------------------------------------------------------------------------------
 
-VET_IN EQU 0x20000400 ;vetor de entrada
-VET_OUT EQU 0x20000600 ;vetor de saída
+
 
 ; Função main()
 Start  
 ; Comece o código aqui <======================================================
-	MOV R0, #0x0400
-	MOVT R0, #0x2000
+
+;-------------------------------------------------------------------------------
+; Inicializacao
+;-------------------------------------------------------------------------------
+    LDR   R0, =VET_IN
+    LDR   R1, =VET_OUT
 	
-	LDRH R2,[R0], #2
+	MOV R2,#0 ;contador de numeros ja lidos
+	MOV R3,#0 ;contador de palindromos
+	MOV R9,#10 ;cte 10
+	
+;-------------------------------------------------------------------------------
+; Varredura do vetor de entrada
+;-------------------------------------------------------------------------------
+varre_laco
+	CMP R2,#30 
+	BHS varre_fim ;contador >= 30?
+	LDRH R4,[R0], #2 ;le e avanca
+	ADDS R2,R2,#1 ; incrementa o contador
+	
+;-------------------------------------------------------------------------------
+; Inversao dos digitos
+; Entrada: R4 = numero original
+; Saida: R8 = numero com os digitos invertidos
+;-------------------------------------------------------------------------------
+	MOV R5,R4
+	MOV R8,#0
+inv_laco
+	CMP R5,#0
+	BEQ fim_inv ; acabaram os digitos
+	UDIV R6,R5,R9 ;R6=R5/10 - remove último dígito
+	MLS R7,R6,R9,R5 ;R7=R5-R6*10 - pega o último dígito
+	MLA R8,R8,R9,R7 ;R8=R8*10+R7 - número invertido
+	MOV R5,R6
+	B inv_laco
+fim_inv
 
+;-------------------------------------------------------------------------------
+; Adiciona ou nao a lista de palindromos
+;-------------------------------------------------------------------------------
+	CMP R8,R4
+	BNE proximo_num  ;nao e palindromo: pula a gravacao
+	ADDS R3,R3,#1
+	STRH R4,[R1],#2 ;grava e avanca o ponteiro de escrita
+proximo_num
+	B varre_laco
+varre_fim
 
+	NOP
     ALIGN                           ; garante que o fim da seção está alinhada 
     END                             ; fim do arquivo
