@@ -90,6 +90,32 @@ proximo_num
 	B varre_laco
 varre_fim
 
+;BubbleSort:
+	SUB R2, R3, #1 ;R3 guarda o tamanho do vetor, R2 eh simplesmente R3-1 para ser o numero de comparacoes do loop2
+loop1
+	LDR R0, =VET_OUT
+	MOV R1, #0
+	MOV R7, #0 ;indica se ouve troca
+loop2
+	LDRH R4, [R0], #2
+	LDRH R5, [R0]
+	CMP R4, R5
+	BLE nao_troca
+	MOV R6, R4
+	MOV R4, R5
+	MOV R5, R6
+	STRH R4, [R0, #-2] 
+	STRH R5, [R0]
+	MOV R7, #1
+nao_troca
+	ADD R1, R1, #1
+	CMP R1, R2
+	BNE loop2
+	CMP R7, #0
+	BNE loop1
+fim
+
+
 	NOP
     ALIGN                           ; garante que o fim da seção está alinhada 
     END                             ; fim do arquivo
