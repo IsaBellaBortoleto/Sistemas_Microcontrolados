@@ -53,6 +53,14 @@ Start
 	MOV R3,#0 ;contador de palindromos
 	MOV R9,#10 ;cte 10
 	
+	BL varre_laco
+	
+	BL bubble_sort
+	
+fim
+	NOP
+	B fim
+	
 ;-------------------------------------------------------------------------------
 ; Varredura do vetor de entrada
 ;-------------------------------------------------------------------------------
@@ -89,8 +97,9 @@ fim_inv
 proximo_num
 	B varre_laco
 varre_fim
-
-;BubbleSort:
+	BX LR
+	
+bubble_sort
 	SUB R2, R3, #1 ;R3 guarda o tamanho do vetor, R2 eh simplesmente R3-1 para ser o numero de comparacoes do loop2
 loop1
 	LDR R0, =VET_OUT
@@ -113,9 +122,8 @@ nao_troca
 	BNE loop2
 	CMP R7, #0
 	BNE loop1
-fim
+	
+	BX LR
 
-
-	NOP
     ALIGN                           ; garante que o fim da seção está alinhada 
     END                             ; fim do arquivo
