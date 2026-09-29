@@ -72,8 +72,31 @@ Start
 
 	
 MainLoop
-	B MainLoop                   ;Volta para o laço principal	
 
+	LDR R4,=TEMP_ATUAL
+	LDR R4,[R4]
+	LDR R5,=TEMP_ALVO
+	LDR R5,[R5]
+	CMP R4,R5
+	
+	BLO temp_menor ;atual < alvo = aquecimento
+	BHI temp_maior ;atual > alvo = resfriamento
+	MOV R0,#2_01
+	MOV R1,#2_10
+	ORR R0,R1 ;Acende os dois LEDs 
+	B atualizaLED
+	
+temp_menor ;Acende o LED de aquecimento(PN0)
+	MOV R0,#2_01
+	B atualizaLED
+	
+temp_maior ;Acende o LED de resfriamento(PN1)
+	MOV R0,#2_10 
+
+atualizaLED
+	BL PortN_Output
+
+	B MainLoop                   ;Volta para o laço principal	
 
     ALIGN                        ;Garante que o fim da seção está alinhada 
     END                          ;Fim do arquivo
