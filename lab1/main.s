@@ -95,8 +95,62 @@ temp_maior ;Acende o LED de resfriamento(PN1)
 
 atualizaLED
 	BL PortN_Output
+	
+	;Dezena com UDIV
+	MOV R0,#10
+	UDIV R6,R4,R0
+	
+	;Unidade com MLS
+	MLS R7,R6,R0,R4
+	LDR  R0, =TABELA_7SEG
+	
+    LDRB R8, [R0, R6]         
+    LDRB R9, [R0, R7]          
 
+;    MOV  R0, R8              
+;    MOV  R1, R9
+;    MOV  R2, R5
+;    BL   Mostra_Tudo        
+	
+	
+	;O atraso provisório de 6 ms - REMOVER DEPOIS
+	MOV R0,#6
+	BL SysTick_Wait1ms
+	
+	;Contar as voltas
+	LDR R0, =CONTADOR
+	LDR R1,[R0]
+	SUBS R1,R1,#1
+	STR R1,[R0]
+	BNE fim_seg 
+	
+	;Chegou a zero, recarregar o contador
+	MOV R1,#N_1S
+	STR R1,[R0]
+	
+	;Aproximar a temperatura do alvo
+	LDR R2,=TEMP_ATUAL
+	LDR R4,[R2]
+	LDR R3,=TEMP_ALVO
+	LDR R5,[R3]
+	CMP R4,R5
+	BLO sobe ;atual < alvo = aquecimento
+	BHI desce;atual > alvo = resfriamento
+
+	B fim_seg
+	
+sobe
+	ADD R4,R4,#1
+	B salva_temp
+desce
+	SUB R4,R4,#1
+salva_temp
+	STR R4,[R2]
+	
+fim_seg	
 	B MainLoop                   ;Volta para o laço principal	
-
+	
+TABELA_7SEG DCB 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F
+	
     ALIGN                        ;Garante que o fim da seção está alinhada 
     END                          ;Fim do arquivo
