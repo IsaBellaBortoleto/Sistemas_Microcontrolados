@@ -1,8 +1,8 @@
 ; gpio.s
 ; Desenvolvido para a placa EK-TM4C1294XL
-; Prof. Guilherme Peron
+; Prof. Guilherme Peron - adaptado para o Lab 1 (GPIO e Interrupções)
 ; 19/03/2018
-
+; Configuração do Port J (chaves com interrupção) e Port N (LEDs PN0/PN1)
 ; -------------------------------------------------------------------------------
         THUMB                        ; Instruções do tipo Thumb-2
 ; -------------------------------------------------------------------------------
@@ -103,6 +103,7 @@ GPIO_PORTN_DATA_R			EQU    0x400643FC
         IMPORT EnableInterrupts
         IMPORT DisableInterrupts
 		IMPORT SysTick_Wait1ms
+		IMPORT TEMP_ALVO
 									
 
 ;--------------------------------------------------------------------------------
@@ -113,97 +114,94 @@ GPIO_Init
 ;=====================
 ; 1. Ativar o clock para a porta setando o bit correspondente no registrador RCGCGPIO,
 ; após isso verificar no PRGPIO se a porta está pronta para uso.
-; enable clock to GPIOF at clock gating register
+; enable clock to GPIOJ e GPION at clock gating register
             LDR     R0, =SYSCTL_RCGCGPIO_R  		;Carrega o endereço do registrador RCGCGPIO
-			MOV		R1, #GPIO_PORTJ                 ;Seta o bit da porta N
-			ORR     R1, #GPIO_PORTN					;Seta o bit da porta M, fazendo com OR
-			;ORR     R1, #GPIO_PORTK
+			LDR     R1, [R0]                        ;Lê as portas já habilitadas
+			ORR		R1, #GPIO_PORTJ                 ;Seta o bit da porta J
+			ORR     R1, #GPIO_PORTN					;Seta o bit da porta N
             STR     R1, [R0]						;Move para a memória os bits das portas no endereço do RCGCGPIO
  
             LDR     R0, =SYSCTL_PRGPIO_R			;Carrega o endereço do PRGPIO para esperar os GPIO ficarem prontos
 EsperaGPIO  LDR     R1, [R0]						;Lê da memória o conteúdo do endereço do registrador
 			MOV     R2, #GPIO_PORTN                 ;Seta os bits correspondentes às portas para fazer a comparação
-			ORR     R2, #GPIO_PORTJ                 ;Seta o bit da porta M, fazendo com OR
-			;ORR     R2, #GPIO_PORTK
+			ORR     R2, #GPIO_PORTJ                 ;Seta o bit da porta J, fazendo com OR
             TST     R1, R2							;ANDS de R1 com R2
             BEQ     EsperaGPIO					    ;Se o flag Z=1, volta para o laço. Senão continua executando
  
 ; 2. Limpar o AMSEL para desabilitar a analógica
             MOV     R1, #0x00						;Colocar 0 no registrador para desabilitar a função analógica
-            LDR     R0, =GPIO_PORTJ_AHB_AMSEL_R     	;Carrega o R0 com o endereço do AMSEL para a porta K
-            STR     R1, [R0]						;Guarda no registrador AMSEL da porta K da memória
-			LDR     R0, =GPIO_PORTN_AHB_AMSEL_R     	;Carrega o R0 com o endereço do AMSEL para a porta M
-            STR     R1, [R0]						;Guarda no registrador AMSEL da porta M da memória
-            ;LDR     R0, =GPIO_PORTN_AMSEL_R		;Carrega o R0 com o endereço do AMSEL para a porta N
-            ;STR     R1, [R0]					    ;Guarda no registrador AMSEL da porta N da memória
+            LDR     R0, =GPIO_PORTJ_AHB_AMSEL_R     	;Carrega o R0 com o endereço do AMSEL para a porta J
+            STR     R1, [R0]						;Guarda no registrador AMSEL da porta J da memória
+			LDR     R0, =GPIO_PORTN_AHB_AMSEL_R     	;Carrega o R0 com o endereço do AMSEL para a porta N
+            STR     R1, [R0]						;Guarda no registrador AMSEL da porta N da memória
+     
  
 ; 3. Limpar PCTL para selecionar o GPIO
             MOV     R1, #0x00					    ;Colocar 0 no registrador para selecionar o modo GPIO
-            LDR     R0, =GPIO_PORTJ_AHB_PCTL_R			;Carrega o R0 com o endereço do PCTL para a porta K
-            STR     R1, [R0]                        ;Guarda no registrador PCTL da porta M da memória
-			LDR     R0, =GPIO_PORTN_AHB_PCTL_R			;Carrega o R0 com o endereço do PCTL para a porta M
-            STR     R1, [R0]                        ;Guarda no registrador PCTL da porta M da memória
-            ;LDR     R0, =GPIO_PORTN_PCTL_R      ;Carrega o R0 com o endereço do PCTL para a porta N
-            ;STR     R1, [R0]                        ;Guarda no registrador PCTL da porta N da memória
+            LDR     R0, =GPIO_PORTJ_AHB_PCTL_R		;Carrega o R0 com o endereço do PCTL para a porta J
+            STR     R1, [R0]                        ;Guarda no registrador PCTL da porta J da memória
+			LDR     R0, =GPIO_PORTN_AHB_PCTL_R		;Carrega o R0 com o endereço do PCTL para a porta N
+            STR     R1, [R0]                        ;Guarda no registrador PCTL da porta N da memória
+
 ; 4. DIR para 0 se for entrada, 1 se for saída
 												
-			LDR     R0, =GPIO_PORTJ_AHB_DIR_R		;Carrega o R0 com o endereço do DIR para a porta N
+			LDR     R0, =GPIO_PORTJ_AHB_DIR_R		;Carrega o R0 com o endereço do DIR para a porta J
 			MOV     R1, #2_00000000					;PJ1 & PJ0 para entrada
-			;ORR     R1, #2_00000010					;Enviar o valor 0x03 para habilitar os pinos como saída
             STR     R1, [R0]						;Guarda no registrador
-			; O certo era verificar os outros bits da PM para não transformar entradas em saídas desnecessárias
-            LDR     R0, =GPIO_PORTN_AHB_DIR_R	   		;Carrega o R0 com o endereço do DIR para a porta M
-            MOV     R1, #2_00000010					;Colocar 0 no registrador DIR para funcionar como entrada
-			
+			; O certo era verificar os outros bits da PN para não transformar entradas em saídas desnecessárias
+            LDR     R0, =GPIO_PORTN_AHB_DIR_R	   	;Carrega o R0 com o endereço do DIR para a porta N
+            MOV     R1, #2_00000010					;Colocar 1 no registrador DIR para funcionar como saída
+			MOV		R2, #2_00000001
+			ORR 	R1, R2
             STR     R1, [R0]						
 ; 5. Limpar os bits AFSEL para 0 para selecionar GPIO 
 ;    Sem função alternativa
             MOV     R1, #0x00						;Colocar o valor 0 para não setar função alternativa
-            LDR     R0, =GPIO_PORTJ_AHB_AFSEL_R     ;Carrega o endereço do AFSEL da porta K
+            LDR     R0, =GPIO_PORTJ_AHB_AFSEL_R     ;Carrega o endereço do AFSEL da porta J
             STR     R1, [R0]                        ;Escreve na porta			
             LDR     R0, =GPIO_PORTN_AHB_AFSEL_R		;Carrega o endereço do AFSEL da porta N
             STR     R1, [R0]						;Escreve na porta
             
 ; 6. Setar os bits de DEN para habilitar I/O digital
             LDR     R0, =GPIO_PORTN_AHB_DEN_R			;Carrega o endereço do DEN                                    
-			MOV     R1, #2_00000010                                                   
+			MOV     R1, #2_00000010
+			MOV		R2, #2_00000001
+			ORR 	R1, R2
             STR     R1, [R0]                            ;Escreve no registrador da memória funcionalidade digital
 			
             LDR     R0, =GPIO_PORTJ_AHB_DEN_R			;Carrega o endereço do DEN
-            LDR     R1, [R0]							;Ler da memória o registrador GPIO_PORTN_DEN_R
+            LDR     R1, [R0]							;Ler da memória o registrador GPIO_PORTJ_AHB_DEN_R
 			MOV     R2, #2_00000001	
 			ORR     R2, #2_00000010						;Habilitar funcionalidade digital na DEN os bits 0 e 1
             ORR     R1, R2
-            STR     R1, [R0]							                           ;Escreve no registrador da memória funcionalidade digital
+            STR     R1, [R0]							;Escreve no registrador da memória funcionalidade digital
 			
 ; 7. Para habilitar resistor de pull-up interno, setar PUR para 1
-			LDR     R0, =GPIO_PORTJ_AHB_PUR_R			;Carrega o endereço do PUR para a porta M
-			LDR     R1, [R0]							;Ler da memória o registrador GPIO_PORTN_DEN_R
+			LDR     R0, =GPIO_PORTJ_AHB_PUR_R			;Carrega o endereço do PUR para a porta J
+			LDR     R1, [R0]							;Ler da memória o registrador GPIO_PORTJ_AHB_PUR_R
 			MOV     R2, #2_00000001	
-			ORR     R2, #2_00000010						;Habilitar funcionalidade digital na DEN os bits 0 e 1
+			ORR     R2, #2_00000010						;Habilitar pull-up no PUR os bits 0 e 1
             ORR     R1, R2
-            STR     R1, [R0]								;Escreve no registrador da memória do resistor de pull-up
+            STR     R1, [R0]							;Escreve no registrador da memória do resistor de pull-up
 
 ;Interrupções
 ; 8. Desabilitar a interrupção no registrador IM
-			LDR     R0, =GPIO_PORTJ_AHB_IM_R			;Carrega o endereço do IM para a porta M
+			LDR     R0, =GPIO_PORTJ_AHB_IM_R			;Carrega o endereço do IM para a porta J
 			MOV     R1, #2_00							;Desabilitar as interrupções  
             STR     R1, [R0]							;Escreve no registrador
             
 ; 9. Configurar o tipo de interrupção por borda no registrador IS
-			LDR     R0, =GPIO_PORTJ_AHB_IS_R			;Carrega o endereço do IS para a porta M
+			LDR     R0, =GPIO_PORTJ_AHB_IS_R			;Carrega o endereço do IS para a porta J
 			MOV     R1, #2_00							;Por Borda  
             STR     R1, [R0]							;Escreve no registrador
 
 ; 10. Configurar  borda única no registrador IBE
-			LDR     R0, =GPIO_PORTJ_AHB_IBE_R				;Carrega o endereço do IBE para a porta M
+			LDR     R0, =GPIO_PORTJ_AHB_IBE_R				;Carrega o endereço do IBE para a porta J
 			MOV     R1, #2_00							;Borda Única  
             STR     R1, [R0]							;Escreve no registrador
 ; 11. Configurar  borda de descida (botão pressionado) no registrador IEV
-			LDR     R0, =GPIO_PORTJ_AHB_IEV_R				;Carrega o endereço do IEV para a porta M
-			MOV     R1, #2_00
-			MOV  	R2, #2_10
-			ORR		R1, R2
+			LDR     R0, =GPIO_PORTJ_AHB_IEV_R			;Carrega o endereço do IEV para a porta J
+			MOV     R1, #2_00  							; 0 = descida, para os dois pinos
             STR     R1, [R0]							;Escreve no registrador
   
  ;icr
@@ -214,22 +212,22 @@ EsperaGPIO  LDR     R1, [R0]						;Lê da memória o conteúdo do endereço do regis
             STR     R1, [R0]
   
 ; 12. Habilitar a interrupção no registrador IM
-			LDR     R0, =GPIO_PORTJ_AHB_IM_R				;Carrega o endereço do IM para a porta M
+			LDR     R0, =GPIO_PORTJ_AHB_IM_R				;Carrega o endereço do IM para a porta J
 			MOV     R1, #2_01
 			MOV  	R2, #2_10
 			ORR		R1, R2
             STR     R1, [R0]							;Escreve no registrador
             
-;Interrupção número 72            
+;Interrupção número 51            
 ; 13. Setar a prioridade no NVIC
-			LDR     R0, =NVIC_PRI12_R           		;Carrega o do NVIC para o grupo que tem o M entre 72 e 75
-			MOV     R1, #5 		                    ;Prioridade 3
-			LSL     R1, R1, #29						;Desloca 5 bits para a esquerda já que o M é o primeiro byte do PRI18
+			LDR     R0, =NVIC_PRI12_R           		;Carrega o do NVIC para o grupo que tem o J entre 48 e 51
+			MOV     R1, #5 		                   		;Prioridade 5
+			LSL     R1, R1, #29							;Desloca 29 bits para a esquerda já que o J é o último byte do PRI12
             STR     R1, [R0]							;Escreve no registrador da memória
 ; 14. Habilitar a interrupção no NVIC
-			LDR     R0, =NVIC_EN1_R           			;Carrega o do NVIC para o grupo que tem o M entre 64 e 95
+			LDR     R0, =NVIC_EN1_R           			;Carrega o do NVIC para o grupo que tem o J entre 32 e 63
 			MOV     R1, #1
-			LSL     R1, #19								;Desloca 8 bits para a esquerda já que o M é a interrupção do bit 8 no EN2
+			LSL     R1, #19								;Desloca 19 bits para a esquerda já que o J é a interrupção do bit 19 no EN1
             STR     R1, [R0]							;Escreve no registrador da memória
 
 
@@ -243,7 +241,7 @@ PortN_Output
 	LDR	R1, =GPIO_PORTN_DATA_R		    ;Carrega o valor do offset do data register
 	;Read-Modify-Write para escrita
 	LDR R2, [R1]
-	BIC R2, #2_00000010                     ;Primeiro limpamos os dois bits do lido da porta R2 = R2 & 11111100
+	BIC R2, #2_00000011                     ;Primeiro limpamos os dois bits do lido da porta R2 = R2 & 11111100
 	ORR R0, R0, R2                          ;Fazer o OR do lido pela porta com o parâmetro de entrada
 	STR R0, [R1]                            ;Escreve na porta N o barramento de dados dos pinos [N5-N0]
 	BX LR									;Retorno
@@ -256,35 +254,43 @@ PortN_Output
 ; Função ISR GPIOPortJ_Handler (Tratamento da interrupção)
 GPIOPortJ_Handler
 
-    PUSH {LR}  ;guarda o LR antes de chamar a função EnableInterrupts, pois esta função altera o LR
-
-    LDR R2,=GPIO_PORTJ_AHB_MIS_R
-    LDR R2,[R2] ;le quais bits geraram a interrupcao
-
-    LDR R0, =GPIO_PORTJ_AHB_ICR_R
-	MOV     R1, #2_01
-	MOV  	R3, #2_10
-	ORR		R1, R3
-    STR     R1, [R0]     
-
-    ANDS R1,R2,#2_01 ;foi o SW1?
-    BEQ apagaled1
-    MOV R0,#2_10 ;acende led
-    B escreveled1
-apagaled1
-    MOV R0,#0x00 ;apaga led
-escreveled1
-    BL PortN_Output
-
-    POP {LR}  
-
- 		
-
-	;EOR R10, R10, #2_1
+	LDR R2, =GPIO_PORTJ_AHB_MIS_R 	;carrega o endereço do MIS
+	LDR R2,[R2] 					;R2=MIS
 	
 	
-    BX LR             		
- 
+	LDR R0, =GPIO_PORTJ_AHB_ICR_R 	;carrega o endereço do ICR
+    STR R2, [R0] 					;ACK, limpa os flags que dispararam
+	
+	LDR R0,=TEMP_ALVO
+	LDR R1,[R0] 					;R1=valor atual da temp alvo
+	
+
+;SW1 - incrementa o alvo	
+	TST R2,#2_01 					;testa o bit 0 do MIS
+	BEQ testaSW2 					;se bit 0=0, SW1 não foi presssionada, pula
+	
+	
+	CMP R1,#50 						;compara o alvo com 50
+	BHS testaSW2 					;alvo>=50, pula
+	ADDS R1,R1,#1
+	
+;SW2 - decrementa o alvo	
+
+testaSW2
+	TST R2,#2_10 					;testa o bit 1 do MIS
+	BEQ salvaAlvo 					;se bit 1=0, SW2 não foi presssionada, pula
+	
+	
+	CMP R1,#5 						;compara o alvo com 5
+	BLS salvaAlvo 					;alvo<=5, pula
+	SUBS R1,R1,#1
+	
+salvaAlvo
+	STR R1,[R0]
+	
+	
+	
+ 	BX LR  
      
 
     ALIGN                           ; garante que o fim da seção está alinhada 

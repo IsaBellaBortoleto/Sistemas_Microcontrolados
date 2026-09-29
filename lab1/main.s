@@ -9,18 +9,24 @@
 
 ; -------------------------------------------------------------------------------
         THUMB                        ; Instruções do tipo Thumb-2
+			
+N_1S EQU 167 ;167 voltas x 6ms = 1s
 ; -------------------------------------------------------------------------------
 
 ; -------------------------------------------------------------------------------
 ; Área de Dados - Declarações de variáveis
 		AREA  DATA, ALIGN=2
+		EXPORT TEMP_ALVO [DATA,SIZE=4]
 		; Se alguma variável for chamada em outro arquivo
 		;EXPORT  <var> [DATA,SIZE=<tam>]   ; Permite chamar a variável <var> a 
 		                                   ; partir de outro arquivo
 ;<var>	SPACE <tam>                        ; Declara uma variável de nome <var>
                                            ; de <tam> bytes a partir da primeira 
                                            ; posição da RAM		
-
+TEMP_ATUAL SPACE 4
+TEMP_ALVO SPACE 4
+CONTADOR SPACE 4
+	
 ; -------------------------------------------------------------------------------
 ; Área de Código - Tudo abaixo da diretiva a seguir será armazenado na memória de 
 ;                  código
@@ -44,8 +50,27 @@
 Start  		
 	BL PLL_Init                  ;Chama a subrotina para alterar o clock do microcontrolador para 80MHz
 	BL SysTick_Init              ;Chama a subrotina para inicializar o SysTick
+	
+	;TEMP_ATUAL=10
+	LDR R0, =TEMP_ATUAL
+	MOV R1, #10
+	STR R1, [R0]
+	
+	;TEMP_ALVO=22
+	LDR R0, =TEMP_ALVO
+	MOV R1,#22
+	STR R1,[R0]
+	
+	;CONTADOR=167
+	LDR R0, =CONTADOR
+	MOV R1,#N_1S
+	STR R1,[R0]
+	
 	BL GPIO_Init                 ;Chama a subrotina que inicializa os GPIO
 
+
+
+	
 MainLoop
 	B MainLoop                   ;Volta para o laço principal	
 
