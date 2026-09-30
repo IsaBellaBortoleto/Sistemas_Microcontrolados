@@ -204,7 +204,7 @@ EsperaGPIO  LDR     R1, [R0]						;Lê da memória o conteúdo do endereço do regis
 			MOV     R1, #2_00  							; 0 = descida, para os dois pinos
             STR     R1, [R0]							;Escreve no registrador
   
- ;icr
+ ;ICR - limpa flags pendentes antes de habilitar a interrupção
 			LDR     R0, =GPIO_PORTJ_AHB_ICR_R
 			MOV     R1, #2_01
 			MOV  	R2, #2_10

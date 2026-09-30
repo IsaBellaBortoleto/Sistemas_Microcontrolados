@@ -1,4 +1,6 @@
 ; display.s
+; Desenvolvido para a placa EK-TM4C1294XL + PAT DAELN - Lab 1 (GPIO e Interrupções)
+; Configuração dos Ports A, B, P e Q e multiplexação dos displays de 7 segmentos e LEDs da PAT
 
 ; -------------------------------------------------------------------------------
         THUMB                        ; Instruções do tipo Thumb-2
@@ -220,16 +222,16 @@ PortP_Output
         BX      LR
 
 Mostra_Tudo
-;aqui vai a multiplexação. A ideia seria ativar com a temporização cada display e antes de cada display de 7 seg chamar Numero_Display
+;Multiplexação: dezena (PB4), unidade (PB5) e LEDs (PP5), 1 ms aceso + 1 ms de guarda cada
 ; Entrada:
 ; R0 = código da dezena
 ; R1 = código da unidade
 ; R2 = setpoint
+		PUSH {R4-R6,LR}; salva R4-R6 do main e o LR antes de usar
 		MOV     R4, R0      ; guarda dezena
         MOV     R5, R1      ; guarda unidade
         MOV     R6, R2      ; guarda setpoint
 		
-		PUSH {R4-R6,LR}; para poder voltar a main
 		
 ;dezena:
 		MOV R1, R4

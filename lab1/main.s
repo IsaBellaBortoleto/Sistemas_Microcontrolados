@@ -1,11 +1,11 @@
 ; main.s
 ; Desenvolvido para a placa EK-TM4C1294XL
-; Prof. Guilherme Peron
+; Prof. Guilherme Peron - adaptado para o Lab 1 (GPIO e Interrupções)
 ; 15/03/2018
-; Este programa espera o usuário apertar a chave USR_SW1 e/ou a chave USR_SW2.
-; Caso o usuário pressione a chave USR_SW1, acenderá o LED2. Caso o usuário pressione 
-; a chave USR_SW2, acenderá o LED1. Caso as duas chaves sejam pressionadas, os dois 
-; LEDs acendem.
+; Lab 1 - Termostato digital: TEMP_ATUAL começa em 10 e se aproxima de TEMP_ALVO
+; (inicia em 22) 1° por segundo. PN0 = aquecimento, PN1 = resfriamento, ambos = equilíbrio.
+; USR_SW1/USR_SW2 (interrupção no Port J) alteram TEMP_ALVO entre 5 e 50.
+; Temperatura atual nos displays de 7 segmentos e TEMP_ALVO em binário nos LEDs da PAT.
 
 ; -------------------------------------------------------------------------------
         THUMB                        ; Instruções do tipo Thumb-2
@@ -116,9 +116,6 @@ atualizaLED
     BL   Mostra_Tudo        
 	
 	
-;	;O atraso provisório de 6 ms - REMOVER DEPOIS
-;	MOV R0,#6
-;	BL SysTick_Wait1ms
 	
 	;Contar as voltas
 	LDR R0, =CONTADOR
