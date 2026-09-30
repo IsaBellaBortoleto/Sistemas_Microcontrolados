@@ -44,7 +44,9 @@ CONTADOR SPACE 4
 		IMPORT  SysTick_Wait1ms										
 		IMPORT  GPIO_Init
         IMPORT  PortN_Output
-
+			
+		IMPORT Display_Init
+		IMPORT Mostra_Tudo
 ; -------------------------------------------------------------------------------
 ; Função main()
 Start  		
@@ -67,7 +69,7 @@ Start
 	STR R1,[R0]
 	
 	BL GPIO_Init                 ;Chama a subrotina que inicializa os GPIO
-
+	BL Display_Init				;Chama a subrotina que inicializa os GPIO ligados à PAT
 
 
 	
@@ -107,15 +109,16 @@ atualizaLED
     LDRB R8, [R0, R6]         
     LDRB R9, [R0, R7]          
 
-;    MOV  R0, R8              
-;    MOV  R1, R9
-;    MOV  R2, R5
-;    BL   Mostra_Tudo        
+;passamos aqui a entrada para a função Mostra_Tudo 
+    MOV  R0, R8              
+    MOV  R1, R9
+    MOV  R2, R5
+    BL   Mostra_Tudo        
 	
 	
-	;O atraso provisório de 6 ms - REMOVER DEPOIS
-	MOV R0,#6
-	BL SysTick_Wait1ms
+;	;O atraso provisório de 6 ms - REMOVER DEPOIS
+;	MOV R0,#6
+;	BL SysTick_Wait1ms
 	
 	;Contar as voltas
 	LDR R0, =CONTADOR

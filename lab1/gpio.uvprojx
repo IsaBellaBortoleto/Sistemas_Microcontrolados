@@ -403,6 +403,11 @@
               <FileType>2</FileType>
               <FilePath>.\utils.s</FilePath>
             </File>
+            <File>
+              <FileName>display.s</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\display.s</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
