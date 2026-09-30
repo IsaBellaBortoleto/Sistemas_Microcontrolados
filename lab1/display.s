@@ -229,7 +229,7 @@ Mostra_Tudo
         MOV     R5, R1      ; guarda unidade
         MOV     R6, R2      ; guarda setpoint
 		
-		PUSH {LR}; para poder voltar a main
+		PUSH {R4-R6,LR}; para poder voltar a main
 		
 ;dezena:
 		MOV R1, R4
@@ -288,5 +288,7 @@ Mostra_Tudo
         MOV     R0, #1
         BL      SysTick_Wait1ms
 		
-		POP {LR} 
+		POP {R4-R6, LR} 
 		BX LR 
+		ALIGN
+		END
