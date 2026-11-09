@@ -42,6 +42,11 @@ Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
 
+# ---- Claude Code ----
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+
 # ---- Editores ----
 .vscode/
 .idea/
