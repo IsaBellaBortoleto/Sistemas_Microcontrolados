@@ -35,6 +35,7 @@ void estado_digitando_func(uint8_t tecla);
 void estado_dica_func(uint8_t tecla);
 void estado_acertou_func(uint8_t tecla);
 void tela_dica(void);
+void tela_acertou(void);
 
 typedef enum estJogo
 {
@@ -328,6 +329,7 @@ void estado_init_func(uint8_t tecla)
 	palpite = 0;
 	tentativas = 0;
 	qtd_digitos = 0;
+	contando = 1;
 	tela_digitando();
 	estado = ESTADO_DIGITANDO;
 }
@@ -339,36 +341,36 @@ void estado_init_func(uint8_t tecla)
 // Parâmetro de entrada: tecla pressionada
 void estado_digitando_func(uint8_t tecla)
 {
-	if (/* tecla é um dígito de '0' a '9' */)
+	if (tecla >= '0' && tecla <= '9')
 	{
-		if (/* ainda cabe mais um dígito */)
+		if (qtd_digitos < 2)
 		{
-			// palpite = palpite x 10 + (número do dígito)
-			// soma 1 em qtd_digitos
-			// redesenha a tela de digitação
+			palpite = palpite * 10 + (tecla - '0');
+			qtd_digitos += 1;
+			tela_digitando();		
 		}
 	}
 	else if (tecla == '*')
 	{
-		// apaga o palpite e zera qtd_digitos
 		palpite=0;
 		qtd_digitos=0;
-		// redesenha a tela de digitação
+		tela_digitando();
 	}
 	else if (tecla == '#')
 	{
-		// soma 1 nas tentativas
-		if (/* palpite igual ao número secreto */)
+		tentativas += 1;
+		if (palpite == num_secreto)
 		{
-			// para o tempo
-			// muda o estado para ACERTOU
-			// desenha a tela de acerto
+			contando = 0;
+			estado = ESTADO_ACERTOU;
+			tela_acertou();
 		}
 		else
 		{
-			// desenha a tela de dica   <- ANTES de zerar (ela mostra o palpite)
-			// zera palpite e qtd_digitos
-			// muda o estado para MOSTRANDO_DICA
+			tela_dica();
+			palpite=0;
+			qtd_digitos=0;
+			estado = ESTADO_MOSTRANDO_DICA;
 		}
 	}
 	
@@ -380,17 +382,17 @@ void estado_digitando_func(uint8_t tecla)
 // Parâmetro de entrada: tecla pressionada
 void estado_dica_func(uint8_t tecla)
 {
-	if (/* tecla é um dígito de '0' a '9' */)
+	if (tecla >= '0' && tecla <= '9')
 	{
-		// palpite = (número do dígito)
-		qtd_digitos = 1
+		palpite = tecla - '0';    // caractere -> número
+		qtd_digitos = 1;          // o novo palpite já tem 1 dígito
 		estado = ESTADO_DIGITANDO;
-		// redesenha a tela de digitação
+		tela_digitando();
 	}
 	else if (tecla == '*')
 	{
 		estado = ESTADO_DIGITANDO;
-		// redesenha a tela de digitação
+		tela_digitando();
 	}
 }
 
@@ -400,13 +402,10 @@ void estado_dica_func(uint8_t tecla)
 // Parâmetro de entrada: tecla pressionada
 void estado_acertou_func(uint8_t tecla)
 {
+
 	if (tecla == 'A')
 	{
-		// sorteia um novo número secreto
-		// zera tentativas, segundos, palpite e qtd_digitos
-		// volta a contar o tempo
-		estado = ESTADO_DIGITANDO;
-		// redesenha a tela de digitação
+		estado_init_func(tecla);   // nova partida: mesmo início da primeira
 	}
 }
 
@@ -431,7 +430,8 @@ void tela_dica(void)
 
 // -------------------------------------------------------------------------------
 // Função tela_acertou
-// Desenha a tela do estado ACERTOU
+// Desenha a tela do estado ACERTOU número secreto na linha 1,
+// tentativas e tempo total na linha 2
 void tela_acertou(void)
 {
 	LCD_Limpa();
@@ -440,6 +440,6 @@ void tela_acertou(void)
 	LCD_Escreve(2,0,"Tent:");
 	LCD_Numero(2,5,tentativas,2);
 	LCD_Escreve(2,8,"T:");
-	LCD_Numero(2,10,segundos,2);
-	LCD_Escreve(2,13," s");
+	LCD_Numero(2,10,segundos,3);
+	LCD_Escreve(2,13,"s");
 }
