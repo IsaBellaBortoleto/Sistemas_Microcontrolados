@@ -9,7 +9,11 @@
 
 #include "tm4c1294ncpdt.h"
 
-extern volatile uint8_t pedestre;
+extern volatile uint16_t segundos;   // criada no main.c
+extern volatile uint8_t contando;   
+
+// Contador de milissegundos: só a interrupção usa
+static uint16_t ms = 0;
 
 #define GPIO_PORTJ  (0x0100) //bit 8
 #define GPIO_PORTN  (0x1000) //bit 12
@@ -123,10 +127,10 @@ void PortM_Dir(uint32_t valor)
 // e gerar uma interrupção no fim da contagem (tratada em Timer2A_Handler).
 //
 // Cálculo da contagem, com clock de 80 MHz (PLL):
-//   Tempo = (1/sysclk)*(contagem+1) * (prescale+1)
-//   700 ms = (1/80 MHz)*X -> X = 56.000.000 ticks
-//   16 bits conta até 65.536 e 16 bits + prescale até 16.777.216: não bastam.
-//   32 bits(sem prescale):contagem = 56.000.000-1 = 55.999.999
+// X = 1 ms × 80 MHz = 0,001 s × 80.000.000 Hz = 80.000 ticks
+// contagem = X - 1 = 79.999
+//   16 bits conta até 65.536: não basta, então usamos 32 bits (sem prescale)
+//   contagem = 80.000 - 1 = 79.999
 void Timer_Init(void)
 {
 	// 1. Como vamos utilizar o timer2 , habilitar o bit 2 no registrador RCGCTIMER e depois esperar
@@ -143,11 +147,11 @@ void Timer_Init(void)
 
 	// 4. Como vamos usar o timerA e vamos contar apenas uma vez, vamos colocá lo no modo one
 	// shot
-	TIMER2_TAMR_R = 0x01;
+	TIMER2_TAMR_R = 0x02;
 
 	// 5. Carregar o valor de contagem no registrador
   // timerA no registrador GPTMTAILR
-	TIMER2_TAILR_R = 55999999;
+	TIMER2_TAILR_R = 79999; //1 ms
 
 	// 6. Prescale = 0: o prescaler só existe no modo 16 bits
 	TIMER2_TAPR_R = 0x00;
@@ -168,22 +172,36 @@ void Timer_Init(void)
 
 	// 9. Habilitar o timer (TAEN = 1 no GPTMCTL): começa a contar a partir de agora.
 	//    Em one-shot ele para no zero; para contar de novo, basta repetir este passo
-	TIMER2_CTL_R |= 0x01;
-}
-
-// -------------------------------------------------------------------------------
-// Função Invertepino0
-// Inverte o estado do LED PN0 sem alterar os outros pinos do port N
-void Invertepino0(void)
-{
-	GPIO_PORTN_DATA_R ^= 0x01;
+	TIMER2_CTL_R =  TIMER2_CTL_R | 0x01;
 }
 
 // -------------------------------------------------------------------------------
 // 10. Rotina de interrupção do Timer 2A (nome definido no startup.s)
+// Chamada a cada 1 ms. A cada 1000 chamadas, soma 1 segundo ao tempo de jogo,
+// se o tempo estiver correndo
 void Timer2A_Handler(void)
 {
-	// Limpar o flag de interrupção
-	TIMER2_ICR_R = 0x01;
-	Invertepino0();
+	TIMER2_ICR_R = 0x01;         // limpa o flag de interrupção
+
+	ms += 1;
+ 
+	if (ms == 1000) // passou 1 segundo
+	{
+		ms=0;
+
+		if (contando==1) // só conta se o jogo estiver em andamento
+		{
+			segundos += 1;
+		}
+	}
+}
+
+// -------------------------------------------------------------------------------
+// Função Timer_Valor
+// Devolve o valor atual da contagem do Timer 2A (registrador GPTMTAR)
+// Usado no sorteio
+// Parâmetro de saída: valor atual do timer (0 a 79.999)
+uint32_t Timer_Valor(void)
+{
+		return TIMER2_TAR_R;
 }

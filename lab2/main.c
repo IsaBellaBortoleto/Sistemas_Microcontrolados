@@ -36,6 +36,7 @@ void estado_dica_func(uint8_t tecla);
 void estado_acertou_func(uint8_t tecla);
 void tela_dica(void);
 void tela_acertou(void);
+uint32_t Timer_Valor(void);            
 
 typedef enum estJogo
 {
@@ -324,7 +325,7 @@ void estado_init_func(uint8_t tecla)
 {
 	
 	//trocar depois
-	num_secreto = 57;
+	num_secreto = Timer_Valor()%100;
 	segundos = 0;
 	palpite = 0;
 	tentativas = 0;
