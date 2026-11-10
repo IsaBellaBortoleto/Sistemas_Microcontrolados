@@ -1,0 +1,189 @@
+// gpio.c
+// Desenvolvido para a placa EK-TM4C1294XL
+// Inicializa as portas K, L e M, usadas pelo LCD e pelo teclado matricial,
+// a porta N (LED PN0) e o Timer 2
+// Prof. Guilherme Peron
+
+
+#include <stdint.h>
+
+#include "tm4c1294ncpdt.h"
+
+extern volatile uint8_t pedestre;
+
+#define GPIO_PORTJ  (0x0100) //bit 8
+#define GPIO_PORTN  (0x1000) //bit 12
+#define GPIO_PORTF  (0x0020)
+
+
+#define GPIO_PORTK  (0x0200) //bit 9
+#define GPIO_PORTM  (0x0800) //bit 11
+#define GPIO_PORTL  (0x0400) //bit 10
+
+// -------------------------------------------------------------------------------
+// Função GPIO_Init
+// Inicializa os ports K (barramento de dados D7-D0 do LCD),
+// L (linhas do teclado) e M (RS, R/W e EN do LCD e colunas do teclado)
+void GPIO_Init(void)
+{
+	//1a. Ativar o clock para a porta setando o bit correspondente no registrador RCGCGPIO
+	SYSCTL_RCGCGPIO_R = (GPIO_PORTK | GPIO_PORTM | GPIO_PORTL | GPIO_PORTN);
+	//1b.   após isso verificar no PRGPIO se a porta está pronta para uso.
+	while((SYSCTL_PRGPIO_R & (GPIO_PORTK | GPIO_PORTM | GPIO_PORTL | GPIO_PORTN) ) != (GPIO_PORTK | GPIO_PORTM | GPIO_PORTL | GPIO_PORTN) ){};
+
+	// 2. Limpar o AMSEL para desabilitar a analógica
+	GPIO_PORTK_AMSEL_R = 0x00;
+	GPIO_PORTM_AMSEL_R = 0x00;
+	GPIO_PORTL_AMSEL_R = 0x00;
+	GPIO_PORTN_AMSEL_R = 0x00;
+
+	// 3. Limpar PCTL para selecionar o GPIO
+	GPIO_PORTK_PCTL_R = 0x00;
+	GPIO_PORTM_PCTL_R = 0x00;
+	GPIO_PORTL_PCTL_R = 0x00;
+	GPIO_PORTN_PCTL_R = 0x00;
+
+	// 4. DIR para 0 se for entrada, 1 se for saída
+	GPIO_PORTK_DIR_R = 0xFF;   //PK0 a PK7 como saída
+	GPIO_PORTM_DIR_R = 0x07;   //PM0 a PM2 como saída; PM4 a PM7 começam como entrada (alta impedância)
+	GPIO_PORTL_DIR_R = 0xF0;   //PL0 a PL3 como entrada
+	GPIO_PORTN_DIR_R = 0x01;   //PN0 (LED) como saída
+
+	// 5. Limpar os bits AFSEL para 0 para selecionar GPIO sem função alternativa
+	GPIO_PORTK_AFSEL_R = 0x00;
+	GPIO_PORTM_AFSEL_R = 0x00;
+	GPIO_PORTL_AFSEL_R = 0x00;
+	GPIO_PORTN_AFSEL_R = 0x00;
+
+	// 6. Setar os bits de DEN para habilitar I/O digital
+	GPIO_PORTK_DEN_R = 0xFF;   //PK0 a PK7
+	GPIO_PORTM_DEN_R = 0xF7;   //PM0 a PM2 e PM4 a PM7
+	GPIO_PORTL_DEN_R = 0x0F;   //PL0 a PL3
+	GPIO_PORTN_DEN_R = 0x01;   //PN0
+
+	// 7. Habilitar resistor de pull-up interno nas linhas do teclado, setar PUR para 1
+	GPIO_PORTL_PUR_R = 0x0F;   //PL0 a PL3
+}
+
+// -------------------------------------------------------------------------------
+// Função PortM_Output
+// Escreve os valores nos pinos PM0 (RS), PM1 (R/W) e PM2 (EN)
+// Parâmetro de entrada: Valor a ser escrito
+// Parâmetro de saída: não tem
+void PortM_Output(uint32_t valor)
+{
+    uint32_t temp;
+    //vamos zerar somente os bits 0 a 2
+    //zera os bits 0 a 2 (LCD) e 4 a 7 (colunas do teclado), preservando só o PM3
+    temp = GPIO_PORTM_DATA_R & 0x08;
+    //agora vamos fazer o OR com o valor recebido na função
+    temp = temp | valor;
+    GPIO_PORTM_DATA_R = temp;
+}
+
+// -------------------------------------------------------------------------------
+// Função PortL_Input
+// Lê as linhas do teclado (PL0 a PL3)
+// Parâmetro de entrada: Não tem
+// Parâmetro de saída: valor das linhas (bit em 0 = tecla pressionada naquela linha)
+uint32_t PortL_Input(void)
+{
+	return GPIO_PORTL_DATA_R & 0x0F;
+}
+// -------------------------------------------------------------------------------
+// Função PortK_Output
+// Escreve o comando ou caractere no barramento de dados (PK0 a PK7)
+// Parâmetro de entrada: Valor a ser escrito
+// Parâmetro de saída: não tem
+void PortK_Output(uint32_t valor)
+{
+    uint32_t temp;
+    //os 8 bits do port são usados, então não há bits a preservar
+    temp = GPIO_PORTK_DATA_R & 0x00;
+    //agora vamos fazer o OR com o valor recebido na função
+    temp = temp | valor;
+    GPIO_PORTK_DATA_R = temp;
+}
+
+
+// -------------------------------------------------------------------------------
+// Função PortM_Dir
+// Escolhe a direção dos pinos do port M (ativa a coluna da varredura)
+// Parâmetro de entrada: valor do DIR (0x17, 0x27, 0x47 ou 0x87)
+// Parâmetro de saída: não tem
+void PortM_Dir(uint32_t valor)
+{
+	GPIO_PORTM_DIR_R = valor;
+}
+
+
+// -------------------------------------------------------------------------------
+// Função Timer_Init
+// Configura o Timer 2A para contar 700 ms uma única vez (one-shot, 32 bits)
+// e gerar uma interrupção no fim da contagem (tratada em Timer2A_Handler).
+//
+// Cálculo da contagem, com clock de 80 MHz (PLL):
+//   Tempo = (1/sysclk)*(contagem+1) * (prescale+1)
+//   700 ms = (1/80 MHz)*X -> X = 56.000.000 ticks
+//   16 bits conta até 65.536 e 16 bits + prescale até 16.777.216: não bastam.
+//   32 bits(sem prescale):contagem = 56.000.000-1 = 55.999.999
+void Timer_Init(void)
+{
+	// 1. Como vamos utilizar o timer2 , habilitar o bit 2 no registrador RCGCTIMER e depois esperar
+	// enquanto bit 2 do registrador PRTIMER não está setado
+	SYSCTL_RCGCTIMER_R |= 0x04;
+	while((SYSCTL_PRTIMER_R & 0x04) == 0){};
+
+	// 2. Desabilitar o timer2 para fazer as configurações (adiante vamos habilitá lo novamente)
+	TIMER2_CTL_R = 0x00;
+
+	// 3.Conforme calculamos os valores, colocar o timer2 no modo 32 bits então escrever 0x00 nos
+	// bits respectivos do registrador GPTMCFG
+	TIMER2_CFG_R = 0x00;
+
+	// 4. Como vamos usar o timerA e vamos contar apenas uma vez, vamos colocá lo no modo one
+	// shot
+	TIMER2_TAMR_R = 0x01;
+
+	// 5. Carregar o valor de contagem no registrador
+  // timerA no registrador GPTMTAILR
+	TIMER2_TAILR_R = 55999999;
+
+	// 6. Prescale = 0: o prescaler só existe no modo 16 bits
+	TIMER2_TAPR_R = 0x00;
+
+	// 7. Como vamos utilizar o timerA , setar o bit TnTOCINT no registrador GPTMICR , para
+	//garantir que a primeira interrupção seja atendida.
+	TIMER2_ICR_R = 0x01;
+
+	// 8a. Habilitar a interrupção de time-out do TimerA (TATOIM = 1 no GPTMIMR)
+	TIMER2_IMR_R |= 0x01;
+
+	// 8b. Prioridade 4 no NVIC. O Timer2A é a interrupção nº 23 (tabela 2-9 do datasheet);
+	//     o PRI5 guarda as interrupções 20 a 23 e a 23 fica nos bits 31:29
+	NVIC_PRI5_R = 4 << 29;
+
+	// 8c. Habilitar a interrupção nº 23 no NVIC (bit 23 do EN0, que cobre as interrupções 0 a 31)
+	NVIC_EN0_R = 1 << 23;
+
+	// 9. Habilitar o timer (TAEN = 1 no GPTMCTL): começa a contar a partir de agora.
+	//    Em one-shot ele para no zero; para contar de novo, basta repetir este passo
+	TIMER2_CTL_R |= 0x01;
+}
+
+// -------------------------------------------------------------------------------
+// Função Invertepino0
+// Inverte o estado do LED PN0 sem alterar os outros pinos do port N
+void Invertepino0(void)
+{
+	GPIO_PORTN_DATA_R ^= 0x01;
+}
+
+// -------------------------------------------------------------------------------
+// 10. Rotina de interrupção do Timer 2A (nome definido no startup.s)
+void Timer2A_Handler(void)
+{
+	// Limpar o flag de interrupção
+	TIMER2_ICR_R = 0x01;
+	Invertepino0();
+}
