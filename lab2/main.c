@@ -115,6 +115,7 @@ uint8_t Teclado_Le(void)
 					tecla ='*';
 				break;
 			}
+			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta, se n precisar, remover
 			SysTick_Wait1ms(200);   // debounce
 			return tecla;
 		}
@@ -140,6 +141,7 @@ uint8_t Teclado_Le(void)
 					tecla='0';
 				break;
 			}
+			while (PortL_Input() != 0x0F) {}
 			SysTick_Wait1ms(200);   // debounce
 			return tecla;
 
@@ -166,6 +168,7 @@ uint8_t Teclado_Le(void)
 					tecla='#';
 				break;
 			}
+			while (PortL_Input() != 0x0F) {}
 			SysTick_Wait1ms(200);   // debounce
 			return tecla;
 
@@ -192,6 +195,7 @@ uint8_t Teclado_Le(void)
 					tecla='D';
 				break;
 			}
+			while (PortL_Input() != 0x0F) {}
 			SysTick_Wait1ms(200);   // debounce
 			return tecla;
 
