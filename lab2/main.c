@@ -5,7 +5,8 @@
 
 #include <stdint.h>
 
-
+//variavel global para os segundos
+volatile uint16_t segundos = 0;
 
 void PLL_Init(void);
 void SysTick_Init(void);
@@ -23,29 +24,73 @@ void LCD_Init(void);
 void LCD_Cursor(uint8_t linha,uint8_t coluna);
 void LCD_Escreve(uint8_t linha, uint8_t coluna, const char *texto);
 void LCD_Numero(uint8_t linha,uint8_t coluna,uint16_t valor,uint8_t digitos);
+uint8_t Teclado_Le(void);
+void estado_init_func(uint8_t tecla);
+void estado_digitando_func(uint8_t tecla);
+void estado_dica_func(uint8_t tecla);
+void estado_acertou_func(uint8_t tecla);
 
+
+typedef enum estJogo
+{
+	ESTADO_INICIO,
+	ESTADO_DIGITANDO,
+	ESTADO_MOSTRANDO_DICA,
+	ESTADO_ACERTOU
+}estadosJogo;
+
+estadosJogo estado = ESTADO_INICIO;
+uint8_t num_secreto;
+uint8_t palpite=0;
+uint8_t tentativas=0;
+uint8_t qtd_digitos = 0;
 int main(void)
 {
+	uint8_t tecla;
+
 	PLL_Init();
 	SysTick_Init();
 	GPIO_Init();
 	Timer_Init();
 	LCD_Init();
 	LCD_Escreve(1, 0, "Adivinhe: 0-99");
+	Teclado_Le();
 
-
-
-
-	// Segunda linha: posiciona o cursor na linha 2, coluna 1
-	// As teclas pressionadas serão escritas a partir daqui
-	LCD_Comando(0xC0);
 
 	// Varredura do teclado: ativa uma coluna por vez (saída em 0) e lê as linhas
 	// Com o pull-up, as linhas ficam em 1; a linha da tecla pressionada vai para 0
 	while (1)
 	{
-		uint8_t linhas;
+		tecla=Teclado_Le();
+		if(tecla != 0)
+		{
+			switch(estado)
+			{
+				case ESTADO_INICIO:
+					estado_init_func(tecla);
+				break;
+				case ESTADO_DIGITANDO:
+					estado_digitando_func(tecla);
+				break;
+				case ESTADO_MOSTRANDO_DICA:
+					estado_dica_func(tecla);
+				break;
+				case ESTADO_ACERTOU:
+					estado_acertou_func(tecla);
+				break;
+			}
+		}
+	}
 
+}
+// -------------------------------------------------------------------------------
+// Função Teclado_Le
+// Faz a varredura do teclado matricial 4x4, uma coluna por vez
+uint8_t Teclado_Le(void)
+{
+		uint8_t linhas;
+		uint8_t tecla = 0;
+	
 		// Coluna 1
 		PortM_Dir(0x17);          // ativa a coluna 1 (PM4)
 		SysTick_Wait1ms(1);       // tempo de guarda
@@ -55,19 +100,20 @@ int main(void)
 			switch (linhas)
 			{
 				case 0x0E:            // linha 1 (PL0)
-					LCD_Dado('1');
+					tecla ='1';
 				break;
 				case 0x0D:            // linha 2 (PL1)
-					LCD_Dado('4');
+					tecla ='4';
 				break;
 				case 0x0B:            // linha 3 (PL2)
-					LCD_Dado('7');
+					tecla ='7';
 				break;
 				case 0x07:            // linha 4 (PL3)
-					LCD_Dado('*');
+					tecla ='*';
 				break;
 			}
 			SysTick_Wait1ms(200);   // debounce
+			return tecla;
 		}
 
 		// Coluna 2
@@ -79,19 +125,21 @@ int main(void)
 			switch (linhas)
 			{
 				case 0x0E:
-					LCD_Dado('2');
+					tecla='2';
 				break;
 				case 0x0D:
-					LCD_Dado('5');
+					tecla='5';
 				break;
 				case 0x0B:
-					LCD_Dado('8');
+					tecla='8';
 				break;
 				case 0x07:
-					LCD_Dado('0');
+					tecla='0';
 				break;
 			}
 			SysTick_Wait1ms(200);   // debounce
+			return tecla;
+
 		}
 
 		// Coluna 3
@@ -103,19 +151,21 @@ int main(void)
 			switch (linhas)
 			{
 				case 0x0E:
-					LCD_Dado('3');
+					tecla='3';
 				break;
 				case 0x0D:
-					LCD_Dado('6');
+					tecla='6';
 				break;
 				case 0x0B:
-					LCD_Dado('9');
+					tecla='9';
 				break;
 				case 0x07:
-					LCD_Dado('#');
+					tecla='#';
 				break;
 			}
 			SysTick_Wait1ms(200);   // debounce
+			return tecla;
+
 		}
 
 		// Coluna 4
@@ -127,22 +177,23 @@ int main(void)
 			switch (linhas)
 			{
 				case 0x0E:
-					LCD_Dado('A');
+					tecla='A';
 				break;
 				case 0x0D:
-					LCD_Dado('B');
+					tecla='B';
 				break;
 				case 0x0B:
-					LCD_Dado('C');
+					tecla='C';
 				break;
 				case 0x07:
-					LCD_Dado('D');
+					tecla='D';
 				break;
 			}
 			SysTick_Wait1ms(200);   // debounce
-		}
-	}
+			return tecla;
 
+		}
+		return 0;
 }
 
 // -------------------------------------------------------------------------------
