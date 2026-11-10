@@ -7,6 +7,9 @@
 
 //variavel global para os segundos
 volatile uint16_t segundos = 0;
+// 1 = tempo correndo, 0 = parado
+volatile uint8_t contando = 0;   
+
 
 void PLL_Init(void);
 void SysTick_Init(void);
@@ -24,12 +27,14 @@ void LCD_Init(void);
 void LCD_Cursor(uint8_t linha,uint8_t coluna);
 void LCD_Escreve(uint8_t linha, uint8_t coluna, const char *texto);
 void LCD_Numero(uint8_t linha,uint8_t coluna,uint16_t valor,uint8_t digitos);
+void LCD_Limpa(void);
+void tela_digitando(void);
 uint8_t Teclado_Le(void);
 void estado_init_func(uint8_t tecla);
 void estado_digitando_func(uint8_t tecla);
 void estado_dica_func(uint8_t tecla);
 void estado_acertou_func(uint8_t tecla);
-
+void tela_dica(void);
 
 typedef enum estJogo
 {
@@ -54,11 +59,7 @@ int main(void)
 	Timer_Init();
 	LCD_Init();
 	LCD_Escreve(1, 0, "Adivinhe: 0-99");
-	Teclado_Le();
 
-
-	// Varredura do teclado: ativa uma coluna por vez (saída em 0) e lê as linhas
-	// Com o pull-up, as linhas ficam em 1; a linha da tecla pressionada vai para 0
 	while (1)
 	{
 		tecla=Teclado_Le();
@@ -292,4 +293,153 @@ void LCD_Numero(uint8_t linha,uint8_t coluna,uint16_t valor,uint8_t digitos)
 
 	LCD_Dado((valor%10) + '0');   // unidade
 	
+}
+
+// -------------------------------------------------------------------------------
+// Função LCD_Limpa
+// limpa o display 
+void LCD_Limpa(void)
+{
+	LCD_Comando(0x01);       // limpa o display e leva o cursor para o home
+	SysTick_Wait1us(1640);   // o comando 0x01 precisa de 1,64ms
+}
+
+// -------------------------------------------------------------------------------
+// Função tela_digitando
+// desenha a tela do estado DIGITANDO: palpite na linha 1 e tentativas na linha 2
+void tela_digitando(void)
+{
+	LCD_Limpa();    
+	LCD_Escreve(1,0,"Palpite: ");
+	LCD_Numero(1,9,palpite,2);
+	LCD_Escreve(2,0,"Tentativas: ");
+	LCD_Numero(2,12,tentativas,2);
+}
+
+// -------------------------------------------------------------------------------
+// Função estado_init_func
+// Qualquer tecla: sorteia o número secreto (Timer % 100) e zera tentativas e tempo
+void estado_init_func(uint8_t tecla)
+{
+	
+	//trocar depois
+	num_secreto = 57;
+	segundos = 0;
+	palpite = 0;
+	tentativas = 0;
+	qtd_digitos = 0;
+	tela_digitando();
+	estado = ESTADO_DIGITANDO;
+}
+
+// -------------------------------------------------------------------------------
+// Função estado_digitando_func
+// Trata as teclas no estado DIGITANDO: dígitos montam o palpite,
+// * apaga e # confirma o palpite
+// Parâmetro de entrada: tecla pressionada
+void estado_digitando_func(uint8_t tecla)
+{
+	if (/* tecla é um dígito de '0' a '9' */)
+	{
+		if (/* ainda cabe mais um dígito */)
+		{
+			// palpite = palpite x 10 + (número do dígito)
+			// soma 1 em qtd_digitos
+			// redesenha a tela de digitação
+		}
+	}
+	else if (tecla == '*')
+	{
+		// apaga o palpite e zera qtd_digitos
+		palpite=0;
+		qtd_digitos=0;
+		// redesenha a tela de digitação
+	}
+	else if (tecla == '#')
+	{
+		// soma 1 nas tentativas
+		if (/* palpite igual ao número secreto */)
+		{
+			// para o tempo
+			// muda o estado para ACERTOU
+			// desenha a tela de acerto
+		}
+		else
+		{
+			// desenha a tela de dica   <- ANTES de zerar (ela mostra o palpite)
+			// zera palpite e qtd_digitos
+			// muda o estado para MOSTRANDO_DICA
+		}
+	}
+	
+}
+
+// -------------------------------------------------------------------------------
+// Função estado_dica_func
+// Trata as teclas no estado MOSTRANDO_DICA
+// Parâmetro de entrada: tecla pressionada
+void estado_dica_func(uint8_t tecla)
+{
+	if (/* tecla é um dígito de '0' a '9' */)
+	{
+		// palpite = (número do dígito)
+		qtd_digitos = 1
+		estado = ESTADO_DIGITANDO;
+		// redesenha a tela de digitação
+	}
+	else if (tecla == '*')
+	{
+		estado = ESTADO_DIGITANDO;
+		// redesenha a tela de digitação
+	}
+}
+
+// -------------------------------------------------------------------------------
+// Função estado_acertou_func
+// Trata as teclas no estado ACERTOU: só a tecla A faz algo
+// Parâmetro de entrada: tecla pressionada
+void estado_acertou_func(uint8_t tecla)
+{
+	if (tecla == 'A')
+	{
+		// sorteia um novo número secreto
+		// zera tentativas, segundos, palpite e qtd_digitos
+		// volta a contar o tempo
+		estado = ESTADO_DIGITANDO;
+		// redesenha a tela de digitação
+	}
+}
+
+// -------------------------------------------------------------------------------
+// Função tela_dica
+// Desenha a tela do estado MOSTRANDO_DICA
+void tela_dica(void)
+{
+	LCD_Limpa();       
+	LCD_Escreve(1,0,"Palpite: ");
+	LCD_Numero(1,9,palpite,2);
+	LCD_Escreve(2,0,"Dica: ");
+	if(palpite<num_secreto)
+	{
+		LCD_Escreve(2,6,"MAIOR");
+	}
+	else
+	{
+		LCD_Escreve(2,6,"MENOR");
+	}		
+}
+
+// -------------------------------------------------------------------------------
+// Função tela_acertou
+// Desenha a tela do estado ACERTOU
+void tela_acertou(void)
+{
+	LCD_Limpa();
+	LCD_Escreve(1,0,"ACERTOU! N=");
+	LCD_Numero(1,11,num_secreto,2);
+	LCD_Escreve(2,0,"Tent:");
+	LCD_Numero(2,5,tentativas,2);
+	LCD_Escreve(2,8,"T:");
+	LCD_Numero(2,10,segundos,2);
+	LCD_Escreve(2,13," s");
 }
