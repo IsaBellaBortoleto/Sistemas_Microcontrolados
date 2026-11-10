@@ -1,14 +1,10 @@
 // main.c
 // Desenvolvido para a placa EK-TM4C1294XL
-// Exercício 2 - LCD e teclado matricial: escreve "UTFPR" na primeira linha
-// do display e, a cada tecla pressionada, escreve a tecla na segunda linha.
-// O teclado é lido por varredura das colunas.
+// Lab 2 (jogo de adivinhação)
 // Prof. Guilherme Peron
 
 #include <stdint.h>
 
-//variavel global para o pedestre
-volatile uint8_t pedestre = 0;
 
 
 void PLL_Init(void);
@@ -23,7 +19,10 @@ void LCD_Comando(uint8_t cmd);
 void LCD_Dado(uint8_t c);
 uint32_t PortL_Input(void);
 void PortM_Dir(uint32_t valor);
-void LCD_Init(uint8_t c);
+void LCD_Init(void);
+void LCD_Cursor(uint8_t linha,uint8_t coluna);
+void LCD_Escreve(uint8_t linha, uint8_t coluna, const char *texto);
+void LCD_Numero(uint8_t linha,uint8_t coluna,uint16_t valor,uint8_t digitos);
 
 int main(void)
 {
@@ -32,28 +31,17 @@ int main(void)
 	GPIO_Init();
 	Timer_Init();
 	LCD_Init();
+	LCD_Escreve(1, 0, "Adivinhe: 0-99");
 
 
-	// Primeira linha
-	LCD_Dado('U');
-	LCD_Dado('T');
-	LCD_Dado('F');
-	LCD_Dado('P');
-	LCD_Dado('R');
-	LCD_Dado(' ');
 
-	// escreve "ko-hi-" (café) em katakana
-	LCD_Dado(0xBA);          // ko
-	LCD_Dado(0xB0);          // - (alonga a vogal)
-	LCD_Dado(0xCB);          // hi
-	LCD_Dado(0xB0);          // - (alonga a vogal)
 
 	// Segunda linha: posiciona o cursor na linha 2, coluna 1
 	// As teclas pressionadas serão escritas a partir daqui
 	LCD_Comando(0xC0);
 
-	// Varredura do teclado: ativa uma coluna por vez (saída em 0) e lê as linhas.
-	// Com o pull-up, as linhas ficam em 1; a linha da tecla pressionada vai para 0.
+	// Varredura do teclado: ativa uma coluna por vez (saída em 0) e lê as linhas
+	// Com o pull-up, as linhas ficam em 1; a linha da tecla pressionada vai para 0
 	while (1)
 	{
 		uint8_t linhas;
@@ -188,16 +176,69 @@ void LCD_Dado(uint8_t c)
 
 // -------------------------------------------------------------------------------
 // Função LCD_Init
-// Envia um caractere ASCII para o LCD (RS = 1)
-// Parâmetro de entrada: caractere a ser escrito
-// Parâmetro de saída: não tem
-
-void LCD_Init(uint8_t c)
+// Inicialização do LCD
+void LCD_Init(void)
 {
-	// Inicialização do LCD
 	LCD_Comando(0x38);       // modo 8 bits, 2 linhas, matriz 5x7
 	LCD_Comando(0x06);       // cursor com autoincremento para a direita
 	LCD_Comando(0x0E);       // liga o display e o cursor, sem piscar
 	LCD_Comando(0x01);       // limpa o display e leva o cursor para o home
 	SysTick_Wait1us(1640);   // o comando 0x01 precisa de 1,64ms
+}
+
+// -------------------------------------------------------------------------------
+// Função LCD_Cursor
+// Posicionar o cursor do LCD
+//Parâmetros de entrada: linha (1 ou 2) e coluna (0 a 15)
+void LCD_Cursor(uint8_t linha,uint8_t coluna)
+{
+	uint8_t cursor=0;
+	if (linha == 1)
+	{
+		cursor = coluna + 0x80;
+	}
+	else
+	{
+		cursor = coluna + 0x80 + 0x40;
+	}
+	LCD_Comando(cursor);
+
+}
+
+
+// -------------------------------------------------------------------------------
+// Função LCD_Escreve
+// escrever uma string numa posição
+//Parâmetros de entrada: linha (1 ou 2) e coluna (0 a 15) e texto
+void LCD_Escreve(uint8_t linha, uint8_t coluna, const char *texto)
+{
+	uint8_t i=0;
+	LCD_Cursor(linha,coluna);
+	while(texto[i] != '\0')
+	{
+			LCD_Dado(texto[i]);
+			i++;
+	}
+	
+}
+
+// -------------------------------------------------------------------------------
+// Função LCD_Numero
+// escreve um número de 2 ou 3 dígitos numa posição
+//Parâmetros de entrada:linha, coluna, valor (0 a 999) e digitos (2 ou 3)
+void LCD_Numero(uint8_t linha,uint8_t coluna,uint16_t valor,uint8_t digitos)
+{
+	LCD_Cursor(linha, coluna);
+
+	if (digitos == 3)
+	{
+			// centena
+			LCD_Dado((valor/100) + '0');
+	}
+
+	// dezena
+	LCD_Dado((valor%100)/10 + '0');
+
+	LCD_Dado((valor%10) + '0');   // unidade
+	
 }
