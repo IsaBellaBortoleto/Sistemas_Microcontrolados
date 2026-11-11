@@ -237,6 +237,7 @@ void LCD_Dado(uint8_t c)
 // Inicialização do LCD
 void LCD_Init(void)
 {
+	SysTick_Wait1ms(15);     // espera o LCD terminar de ligar (>15 ms após energizar)
 	LCD_Comando(0x38);       // modo 8 bits, 2 linhas, matriz 5x7
 	LCD_Comando(0x06);       // cursor com autoincremento para a direita
 	LCD_Comando(0x0E);       // liga o display e o cursor, sem piscar

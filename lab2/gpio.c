@@ -123,8 +123,8 @@ void PortM_Dir(uint32_t valor)
 
 // -------------------------------------------------------------------------------
 // Função Timer_Init
-// Configura o Timer 2A para contar 700 ms uma única vez (one-shot, 32 bits)
-// e gerar uma interrupção no fim da contagem (tratada em Timer2A_Handler).
+// Configura o Timer 2A no modo periódico (32 bits) para gerar uma interrupção
+// a cada 1 ms (tratada em Timer2A_Handler).
 //
 // Cálculo da contagem, com clock de 80 MHz (PLL):
 // X = 1 ms × 80 MHz = 0,001 s × 80.000.000 Hz = 80.000 ticks
@@ -145,8 +145,8 @@ void Timer_Init(void)
 	// bits respectivos do registrador GPTMCFG
 	TIMER2_CFG_R = 0x00;
 
-	// 4. Como vamos usar o timerA e vamos contar apenas uma vez, vamos colocá lo no modo one
-	// shot
+	// 4. Como vamos usar o timerA e queremos uma interrupção a cada 1 ms, colocá-lo no modo
+	// periódico (TAMR = 0x02; one-shot seria 0x01)
 	TIMER2_TAMR_R = 0x02;
 
 	// 5. Carregar o valor de contagem no registrador
@@ -171,7 +171,7 @@ void Timer_Init(void)
 	NVIC_EN0_R = 1 << 23;
 
 	// 9. Habilitar o timer (TAEN = 1 no GPTMCTL): começa a contar a partir de agora.
-	//    Em one-shot ele para no zero; para contar de novo, basta repetir este passo
+	//    No modo periódico ele recarrega o TAILR sozinho ao chegar em zero
 	TIMER2_CTL_R =  TIMER2_CTL_R | 0x01;
 }
 
