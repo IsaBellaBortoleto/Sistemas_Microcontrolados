@@ -76,8 +76,12 @@ void GPIO_Init(void)
 // Parâmetro de saída: não tem
 void PortM_Output(uint32_t valor)
 {
-    // O indice seleciona os bits de GPIODATA pelo endereco (bits [9:2]).
-    GPIO_PORTM_DATA_BITS_R[0x07] = valor;
+    const uint32_t mascara_lcd = 0x07u;
+    uint32_t dados = GPIO_PORTM_DATA_R;
+
+    dados &= ~mascara_lcd;          // Limpa PM0–PM2 na cópia
+    dados |= valor & mascara_lcd;   // Insere os novos bits do LCD
+    GPIO_PORTM_DATA_R = dados;
 }
 
 // -------------------------------------------------------------------------------
@@ -111,7 +115,7 @@ void PortK_Output(uint32_t valor)
 void PortM_SelecionaColuna(uint32_t coluna)
 {
     GPIO_PORTM_DIR_R = (GPIO_PORTM_DIR_R & ~0xF0u) | coluna;
-    GPIO_PORTM_DATA_BITS_R[coluna] = 0;
+    GPIO_PORTM_DATA_R &= ~coluna;
 }
 
 
