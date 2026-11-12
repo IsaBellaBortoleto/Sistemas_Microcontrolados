@@ -12,8 +12,8 @@
 extern volatile uint16_t segundos;   // criada no main.c
 extern volatile uint8_t contando;   
 
-// Contador de milissegundos: só a interrupção usa
-static uint16_t ms = 0;
+// Contador de milissegundos: somado na interrupção e zerado no início de cada partida
+static volatile uint16_t ms = 0;
 
 #define GPIO_PORTJ  (0x0100) //bit 8
 #define GPIO_PORTN  (0x1000) //bit 12
@@ -204,4 +204,14 @@ void Timer2A_Handler(void)
 uint32_t Timer_Valor(void)
 {
 		return TIMER2_TAR_R;
+}
+
+// -------------------------------------------------------------------------------
+// Função Timer_ZeraMs
+// Zera o contador de milissegundos, para o 1º segundo da partida durar 1 s inteiro
+// Parâmetro de entrada: não tem
+// Parâmetro de saída: não tem
+void Timer_ZeraMs(void)
+{
+	ms = 0;
 }

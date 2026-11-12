@@ -36,7 +36,8 @@ void estado_dica_func(uint8_t tecla);
 void estado_acertou_func(uint8_t tecla);
 void tela_dica(void);
 void tela_acertou(void);
-uint32_t Timer_Valor(void);            
+uint32_t Timer_Valor(void);
+void Timer_ZeraMs(void);
 
 typedef enum estJogo
 {
@@ -115,8 +116,9 @@ uint8_t Teclado_Le(void)
 					tecla ='*';
 				break;
 			}
-			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta, se n precisar, remover
-			SysTick_Wait1ms(200);   // debounce
+			SysTick_Wait1ms(100);              // debounce do aperto
+			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta
+			SysTick_Wait1ms(100);              // debounce da soltura
 			return tecla;
 		}
 
@@ -141,8 +143,9 @@ uint8_t Teclado_Le(void)
 					tecla='0';
 				break;
 			}
-			while (PortL_Input() != 0x0F) {}
-			SysTick_Wait1ms(200);   // debounce
+			SysTick_Wait1ms(100);              // debounce do aperto
+			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta
+			SysTick_Wait1ms(100);              // debounce da soltura
 			return tecla;
 
 		}
@@ -168,8 +171,9 @@ uint8_t Teclado_Le(void)
 					tecla='#';
 				break;
 			}
-			while (PortL_Input() != 0x0F) {}
-			SysTick_Wait1ms(200);   // debounce
+			SysTick_Wait1ms(100);              // debounce do aperto
+			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta
+			SysTick_Wait1ms(100);              // debounce da soltura
 			return tecla;
 
 		}
@@ -195,8 +199,9 @@ uint8_t Teclado_Le(void)
 					tecla='D';
 				break;
 			}
-			while (PortL_Input() != 0x0F) {}
-			SysTick_Wait1ms(200);   // debounce
+			SysTick_Wait1ms(100);              // debounce do aperto
+			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta
+			SysTick_Wait1ms(100);              // debounce da soltura
 			return tecla;
 
 		}
@@ -325,12 +330,13 @@ void tela_digitando(void)
 
 // -------------------------------------------------------------------------------
 // Função estado_init_func
-// Qualquer tecla: sorteia o número secreto (Timer % 100) e zera tentativas e tempo
+// Inicia uma partida: sorteia o número secreto (Timer % 100), zera tentativas e tempo
+// e começa a contar o tempo. Se a tecla for um dígito, ela já vale como 1º dígito do palpite
+// Parâmetro de entrada: tecla pressionada
 void estado_init_func(uint8_t tecla)
 {
-	
-	//trocar depois
 	num_secreto = Timer_Valor()%100;
+	Timer_ZeraMs();            // o 1º segundo da partida dura 1 s inteiro
 	segundos = 0;
 	palpite = 0;
 	tentativas = 0;
@@ -338,6 +344,10 @@ void estado_init_func(uint8_t tecla)
 	contando = 1;
 	tela_digitando();
 	estado = ESTADO_DIGITANDO;
+	if (tecla >= '0' && tecla <= '9')
+	{
+		estado_digitando_func(tecla);   // a 1ª tecla já vale como 1º dígito
+	}
 }
 
 // -------------------------------------------------------------------------------
@@ -362,7 +372,7 @@ void estado_digitando_func(uint8_t tecla)
 		qtd_digitos=0;
 		tela_digitando();
 	}
-	else if (tecla == '#')
+	else if (tecla == '#' && qtd_digitos > 0)   // # sem nenhum dígito é ignorado
 	{
 		tentativas += 1;
 		if (palpite == num_secreto)
