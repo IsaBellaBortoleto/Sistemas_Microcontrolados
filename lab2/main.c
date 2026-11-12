@@ -22,7 +22,7 @@ void PortM_Output(uint32_t valor);
 void LCD_Comando(uint8_t cmd);
 void LCD_Dado(uint8_t c);
 uint32_t PortL_Input(void);
-void PortM_Dir(uint32_t valor);
+void PortM_SelecionaColuna(uint32_t coluna);
 void LCD_Init(void);
 void LCD_Cursor(uint8_t linha,uint8_t coluna);
 void LCD_Escreve(uint8_t linha, uint8_t coluna, const char *texto);
@@ -88,15 +88,18 @@ int main(void)
 
 }
 // -------------------------------------------------------------------------------
-// Função Teclado_Le
-// Faz a varredura do teclado matricial 4x4, uma coluna por vez
-uint8_t Teclado_Le(void)
+// Função Teclado_Varre
+// Faz uma varredura do teclado matricial 4x4, uma coluna por vez, sem esperas de debounce
+// Parâmetro de entrada: não tem
+// Parâmetro de saída: caractere da tecla pressionada ('0'-'9', '*', '#', 'A'-'D')
+//                     ou 0 se nenhuma tecla está pressionada
+uint8_t Teclado_Varre(void)
 {
 		uint8_t linhas;
 		uint8_t tecla = 0;
 	
 		// Coluna 1
-		PortM_Dir(0x17);          // ativa a coluna 1 (PM4)
+		PortM_SelecionaColuna(0x10);          // ativa a coluna 1 (PM4)
 		SysTick_Wait1ms(1);       // tempo de guarda
 		linhas = PortL_Input();   // lê PL0-PL3
 		if(linhas != 0x0F)        // alguma tecla da coluna foi pressionada
@@ -116,14 +119,11 @@ uint8_t Teclado_Le(void)
 					tecla ='*';
 				break;
 			}
-			SysTick_Wait1ms(100);              // debounce do aperto
-			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta
-			SysTick_Wait1ms(100);              // debounce da soltura
 			return tecla;
 		}
 
 		// Coluna 2
-		PortM_Dir(0x27);          // ativa a coluna 2 (PM5)
+		PortM_SelecionaColuna(0x20);          // ativa a coluna 2 (PM5)
 		SysTick_Wait1ms(1);       // tempo de guarda
 		linhas = PortL_Input();   // lê PL0-PL3
 		if(linhas != 0x0F)
@@ -143,15 +143,12 @@ uint8_t Teclado_Le(void)
 					tecla='0';
 				break;
 			}
-			SysTick_Wait1ms(100);              // debounce do aperto
-			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta
-			SysTick_Wait1ms(100);              // debounce da soltura
 			return tecla;
 
 		}
 
 		// Coluna 3
-		PortM_Dir(0x47);          // ativa a coluna 3 (PM6)
+		PortM_SelecionaColuna(0x40);          // ativa a coluna 3 (PM6)
 		SysTick_Wait1ms(1);       // tempo de guarda
 		linhas = PortL_Input();   // lê PL0-PL3
 		if(linhas != 0x0F)
@@ -171,15 +168,12 @@ uint8_t Teclado_Le(void)
 					tecla='#';
 				break;
 			}
-			SysTick_Wait1ms(100);              // debounce do aperto
-			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta
-			SysTick_Wait1ms(100);              // debounce da soltura
 			return tecla;
 
 		}
 
 		// Coluna 4
-		PortM_Dir(0x87);          // ativa a coluna 4 (PM7)
+		PortM_SelecionaColuna(0x80);          // ativa a coluna 4 (PM7)
 		SysTick_Wait1ms(1);       // tempo de guarda
 		linhas = PortL_Input();   // lê PL0-PL3
 		if(linhas != 0x0F)
@@ -199,13 +193,37 @@ uint8_t Teclado_Le(void)
 					tecla='D';
 				break;
 			}
-			SysTick_Wait1ms(100);              // debounce do aperto
-			while (PortL_Input() != 0x0F) {}   // espera a tecla ser solta
-			SysTick_Wait1ms(100);              // debounce da soltura
 			return tecla;
 
 		}
 		return 0;
+}
+
+// -------------------------------------------------------------------------------
+// Entrega a tecla na primeira deteccao e so rearma apos duas varreduras sem tecla.
+uint8_t Teclado_Le(void)
+{
+	static uint8_t apertada = 0;
+	static uint8_t leituras_sem_tecla = 0;
+	uint8_t tecla = Teclado_Varre();
+
+	if (tecla == 0)
+	{
+		if (apertada && ++leituras_sem_tecla == 2)
+		{
+			apertada = 0;
+		}
+		return 0;
+	}
+
+	leituras_sem_tecla = 0;
+	if (apertada)
+	{
+		return 0;
+	}
+
+	apertada = 1;
+	return tecla;
 }
 
 // -------------------------------------------------------------------------------
@@ -335,7 +353,7 @@ void tela_digitando(void)
 // Parâmetro de entrada: tecla pressionada
 void estado_init_func(uint8_t tecla)
 {
-	num_secreto = Timer_Valor()%100;
+	num_secreto = Timer_Valor() % 100;
 	Timer_ZeraMs();            // o 1º segundo da partida dura 1 s inteiro
 	segundos = 0;
 	palpite = 0;

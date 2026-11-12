@@ -76,13 +76,8 @@ void GPIO_Init(void)
 // Parâmetro de saída: não tem
 void PortM_Output(uint32_t valor)
 {
-    uint32_t temp;
-    //vamos zerar somente os bits 0 a 2
-    //zera os bits 0 a 2 (LCD) e 4 a 7 (colunas do teclado), preservando só o PM3
-    temp = GPIO_PORTM_DATA_R & 0x08;
-    //agora vamos fazer o OR com o valor recebido na função
-    temp = temp | valor;
-    GPIO_PORTM_DATA_R = temp;
+    // O indice seleciona os bits de GPIODATA pelo endereco (bits [9:2]).
+    GPIO_PORTM_DATA_BITS_R[0x07] = valor;
 }
 
 // -------------------------------------------------------------------------------
@@ -111,13 +106,12 @@ void PortK_Output(uint32_t valor)
 
 
 // -------------------------------------------------------------------------------
-// Função PortM_Dir
-// Escolhe a direção dos pinos do port M (ativa a coluna da varredura)
-// Parâmetro de entrada: valor do DIR (0x17, 0x27, 0x47 ou 0x87)
-// Parâmetro de saída: não tem
-void PortM_Dir(uint32_t valor)
+// Seleciona um pino de PM4 a PM7 como saida baixa para a varredura do teclado.
+// Os demais pinos do teclado ficam como entradas de alta impedancia.
+void PortM_SelecionaColuna(uint32_t coluna)
 {
-	GPIO_PORTM_DIR_R = valor;
+    GPIO_PORTM_DIR_R = (GPIO_PORTM_DIR_R & ~0xF0u) | coluna;
+    GPIO_PORTM_DATA_BITS_R[coluna] = 0;
 }
 
 
